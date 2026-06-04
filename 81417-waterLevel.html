@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>APCS o711 裝飲料模擬器</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px; width: 100%; }
+        h1 { color: #2c3e50; text-align: center; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        button:hover { background-color: #2980b9; }
+        
+        /* 杯子視覺化 */
+        #cup-container { margin-top: 30px; position: relative; display: flex; flex-direction: column; align-items: center; height: 300px; justify-content: flex-end; }
+        .tier { border: 2px solid #333; border-bottom: none; position: relative; background: rgba(255,255,255,0.8); overflow: hidden; transition: width 0.3s; }
+        #tier-top { border-top: none; } /* 頂部開口 */
+        #tier-bottom { border-bottom: 2px solid #333; }
+        .liquid { position: absolute; bottom: 0; left: 0; width: 100%; background: #3498db; transition: height 0.5s ease-in-out; }
+        
+        #result { margin-top: 20px; padding: 15px; background: #e8f6fe; border-radius: 8px; display: none; }
+        .max-highlight { color: #e74c3c; font-weight: bold; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>裝飲料模擬器 (o711)</h1>
+    
+    <div class="input-group">
+        <label>杯子參數 (w1, w2, h1, h2):</label>
+        <div style="display: flex; gap: 5px;">
+            <input type="number" id="w1" placeholder="w1" value="5">
+            <input type="number" id="w2" placeholder="w2" value="3">
+            <input type="number" id="h1" placeholder="h1" value="10">
+            <input type="number" id="h2" placeholder="h2" value="10">
+        </div>
+    </div>
+    
+    <div class="input-group">
+        <label>每次倒入容量 (用空格分隔，例如: 50 100 20):</label>
+        <input type="text" id="volumes" value="50 100 20">
+    </div>
+
+    <button onclick="simulate()">開始注入飲料</button>
+
+    <div id="result"></div>
+    
+    <div id="cup-container">
+        <div id="tier-top" class="tier"><div id="liquid-top" class="liquid"></div></div>
+        <div id="tier-bottom" class="tier"><div id="liquid-bottom" class="liquid"></div></div>
+    </div>
+</div>
+
+<script>
+    function simulate() {
+        // 讀取輸入
+        const w1 = parseInt(document.getElementById('w1').value);
+        const w2 = parseInt(document.getElementById('w2').value);
+        const h1 = parseInt(document.getElementById('h1').value);
+        const h2 = parseInt(document.getElementById('h2').value);
+        const vInputs = document.getElementById('volumes').value.trim().split(/\s+/).map(Number);
+
+        // 更新杯子外觀 (比例縮放)
+        const scale = 10; 
+        const topTier = document.getElementById('tier-top');
+        const bottomTier = document.getElementById('tier-bottom');
+        
+        topTier.style.width = (w2 * scale) + 'px';
+        topTier.style.height = (h2 * scale) + 'px';
+        bottomTier.style.width = (w1 * scale) + 'px';
+        bottomTier.style.height = (h1 * scale) + 'px';
+
+        // 核心計算邏輯
+        let currentHeight = 0;
+        let maxIncrease = 0;
+        let currentTotalVol = 0;
+        const v1_max = w1 * w1 * h1; // 下層總容積
+        const v2_max = w2 * w2 * h2; // 上層總容積
+        const v_total_max = v1_max + v2_max;
+
+        let log = "注入過程：<br>";
+
+        vInputs.forEach((v, index) => {
+            let oldHeight = currentHeight;
+            currentTotalVol = Math.min(currentTotalVol + v, v_total_max);
+            
+            // 計算新水位
+            let newHeight;
+            if (currentTotalVol <= v1_max) {
+                newHeight = currentTotalVol / (w1 * w1);
+            } else {
+                newHeight = h1 + (currentTotalVol - v1_max) / (w2 * w2);
+            }
+
+            let increase = newHeight - oldHeight;
+            if (increase > maxIncrease) maxIncrease = increase;
+            
+            currentHeight = newHeight;
+            log += `第 ${index+1} 次: 上升 ${increase.toFixed(1)} cm (總高: ${newHeight.toFixed(1)} cm)<br>`;
+        });
+
+        // 顯示結果
+        const resultDiv = document.getElementById('result');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = `${log}<br><strong>最大上升變化量: <span class="max-highlight">${maxIncrease.toFixed(1)}</span> cm</strong>`;
+
+        // 更新液體動畫
+        const liqBottom = document.getElementById('liquid-bottom');
+        const liqTop = document.getElementById('liquid-top');
+
+        if (currentHeight <= h1) {
+            liqBottom.style.height = (currentHeight * scale) + 'px';
+            liqTop.style.height = '0px';
+        } else {
+            liqBottom.style.height = '100%';
+            liqTop.style.height = ((currentHeight - h1) * scale) + 'px';
+        }
+    }
+</script>
+
+</body>
+</html>
